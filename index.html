@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="GZ Coin - A cryptocurrency dedicated to humanitarian support for Gaza through blockchain innovation - Coming Soon">
     <title>GZ Coin | Coming Soon - Cryptocurrency for Humanitarian Impact</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="/logo.jpg">
+    <link rel="apple-touch-icon" href="/logo.jpg">
+    
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +21,7 @@
         <div class="container">
             <div class="nav-content">
                 <div class="logo">
-                    <span class="logo-icon">◆</span>
+                    <img src="/logo.jpg" alt="GZ Coin Logo" class="logo-image">
                     <span class="logo-text">GZ Coin</span>
                 </div>
                 <ul class="nav-links">
@@ -25,6 +30,10 @@
                     <li><a href="#transparency">Transparency</a></li>
                     <li><a href="#get-notified">Get Notified</a></li>
                 </ul>
+                <button id="connectWalletNav" class="btn-wallet-nav">
+                    <span class="wallet-icon">🦊</span>
+                    <span class="wallet-text">Connect Wallet</span>
+                </button>
                 <button class="mobile-menu-toggle" aria-label="Toggle menu">
                     <span></span>
                     <span></span>
@@ -249,6 +258,46 @@
                     <p>Thank you for joining our waitlist. We'll keep you updated on our launch and exclusive opportunities.</p>
                 </div>
 
+                <!-- MetaMask Connect Section -->
+                <div class="metamask-section">
+                    <div class="section-divider">
+                        <span>OR</span>
+                    </div>
+                    <h3 class="metamask-title">Early Investors: Connect Your Wallet</h3>
+                    <p class="metamask-description">
+                        Connect your MetaMask wallet to automatically add GZ Coin (BEP20) token on BSC Mainnet and be ready for launch day.
+                    </p>
+                    <button id="connectWalletBtn" class="btn btn-wallet">
+                        <span class="wallet-icon">🦊</span>
+                        <span class="wallet-text">Connect MetaMask</span>
+                    </button>
+                    
+                    <!-- Wallet Status -->
+                    <div id="walletStatus" class="wallet-status" style="display: none;">
+                        <div class="status-icon">✓</div>
+                        <div class="status-content">
+                            <p class="status-title">Wallet Connected!</p>
+                            <p class="status-address" id="walletAddress"></p>
+                            <p class="status-network" id="walletNetwork"></p>
+                        </div>
+                        <button id="disconnectBtn" class="btn-disconnect">Disconnect</button>
+                    </div>
+
+                    <!-- Token Added Confirmation -->
+                    <div id="tokenAdded" class="token-added" style="display: none;">
+                        <div class="token-icon">🪙</div>
+                        <p><strong>GZ Coin (BEP20) added to your wallet!</strong></p>
+                        <p class="token-address">BSC: 0xcac2f4191B50a3781BA939BDd6cBc88C96F540BC</p>
+                        <p class="token-network">✓ Network: BSC Mainnet</p>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div id="walletError" class="wallet-error" style="display: none;">
+                        <div class="error-icon">⚠️</div>
+                        <p id="errorMessage"></p>
+                    </div>
+                </div>
+
                 <div class="cta-buttons" style="margin-top: 40px;">
                     <a href="#" class="btn btn-large btn-outline">Download Whitepaper</a>
                 </div>
@@ -277,7 +326,7 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <div class="footer-logo">
-                        <span class="logo-icon">◆</span>
+                        <img src="/logo.jpg" alt="GZ Coin Logo" class="logo-image">
                         <span class="logo-text">GZ Coin</span>
                     </div>
                     <p class="footer-description">
