@@ -1,4 +1,332 @@
-// Mobile Menu Toggle
+// ===========================
+// METAMASK INTEGRATION
+// ===========================
+
+// GZ Coin Token Details (BEP20 - BSC Mainnet)
+const GZCOIN_TOKEN = {
+    address: '0xcac2f4191B50a3781BA939BDd6cBc88C96F540BC',
+    symbol: 'GZ',
+    decimals: 18,
+    image: window.location.origin + '/logo.jpg' // GZ Coin logo
+};
+
+// BSC Mainnet Configuration
+const BSC_MAINNET = {
+    chainId: '0x38', // 56 in decimal
+    chainName: 'BNB Smart Chain',
+    nativeCurrency: {
+        name: 'BNB',
+        symbol: 'BNB',
+        decimals: 18
+    },
+    rpcUrls: ['https://bsc-dataseed1.binance.org'],
+    blockExplorerUrls: ['https://bscscan.com']
+};
+
+// Wallet state
+let currentAccount = null;
+let currentChainId = null;
+
+// Initialize MetaMask Integration
+function initMetaMask() {
+    const connectWalletBtn = document.getElementById('connectWalletBtn');
+    const connectWalletNav = document.getElementById('connectWalletNav');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+
+    if (connectWalletBtn) {
+        connectWalletBtn.addEventListener('click', connectWallet);
+    }
+
+    if (connectWalletNav) {
+        connectWalletNav.addEventListener('click', connectWallet);
+    }
+
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', disconnectWallet);
+    }
+
+    // Check if already connected
+    if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.request({ method: 'eth_accounts' })
+            .then(accounts => {
+                if (accounts.length > 0) {
+                    handleAccountsChanged(accounts);
+                }
+            })
+            .catch(console.error);
+
+        // Listen for account changes
+        window.ethereum.on('accountsChanged', handleAccountsChanged);
+        window.ethereum.on('chainChanged', handleChainChanged);
+    }
+}
+
+// Connect to MetaMask
+async function connectWallet() {
+    // Check if MetaMask is installed
+    if (typeof window.ethereum === 'undefined') {
+        showError('MetaMask is not installed! Please install MetaMask browser extension to continue.');
+        // Open MetaMask download page
+        setTimeout(() => {
+            window.open('https://metamask.io/download/', '_blank');
+        }, 2000);
+        return;
+    }
+
+    try {
+        hideError();
+        updateButtonState('connecting');
+
+        // Request account access
+        const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+        });
+
+        handleAccountsChanged(accounts);
+
+        // Get chain ID
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        currentChainId = chainId;
+
+        // Check if on BSC Mainnet, if not, prompt to switch
+        if (chainId !== BSC_MAINNET.chainId) {
+            const switched = await switchToBSC();
+            if (!switched) {
+                showError('Please switch to BSC Mainnet to add GZ Coin token.');
+                updateButtonState('connected'); // Keep connected but show error
+                return;
+            }
+        }
+
+        // Add token to MetaMask
+        await addTokenToMetaMask();
+
+    } catch (error) {
+        console.error('Error connecting to MetaMask:', error);
+        updateButtonState('disconnected');
+        
+        if (error.code === 4001) {
+            showError('Connection rejected. Please approve the connection request in MetaMask.');
+        } else {
+            showError('Failed to connect to MetaMask. Please try again.');
+        }
+    }
+}
+
+// Switch to BSC Mainnet
+async function switchToBSC() {
+    try {
+        // Try to switch to BSC Mainnet
+        await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: BSC_MAINNET.chainId }],
+        });
+        return true;
+    } catch (switchError) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+            try {
+                // Add BSC Mainnet to MetaMask
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [BSC_MAINNET],
+                });
+                return true;
+            } catch (addError) {
+                console.error('Error adding BSC network:', addError);
+                return false;
+            }
+        } else if (switchError.code === 4001) {
+            // User rejected the request
+            console.log('User rejected network switch');
+            return false;
+        }
+        console.error('Error switching network:', switchError);
+        return false;
+    }
+}
+
+// Add GZ Coin token to MetaMask
+async function addTokenToMetaMask() {
+    try {
+        const wasAdded = await window.ethereum.request({
+            method: 'wallet_watchAsset',
+            params: {
+                type: 'ERC20',
+                options: {
+                    address: GZCOIN_TOKEN.address,
+                    symbol: GZCOIN_TOKEN.symbol,
+                    decimals: GZCOIN_TOKEN.decimals,
+                    image: GZCOIN_TOKEN.image,
+                },
+            },
+        });
+
+        if (wasAdded) {
+            console.log('GZ Coin token added to MetaMask!');
+            showTokenAdded();
+        } else {
+            console.log('GZ Coin token not added');
+        }
+    } catch (error) {
+        console.error('Error adding token:', error);
+        // Don't show error for token addition failure - it's optional
+    }
+}
+
+// Handle account changes
+function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+        // User disconnected
+        disconnectWallet();
+    } else if (accounts[0] !== currentAccount) {
+        currentAccount = accounts[0];
+        updateWalletUI(accounts[0]);
+        updateButtonState('connected');
+    }
+}
+
+// Handle chain changes
+function handleChainChanged(chainId) {
+    currentChainId = chainId;
+    updateNetworkDisplay(chainId);
+}
+
+// Disconnect wallet
+function disconnectWallet() {
+    currentAccount = null;
+    currentChainId = null;
+    updateButtonState('disconnected');
+    hideWalletStatus();
+    hideTokenAdded();
+}
+
+// Update wallet UI
+function updateWalletUI(address) {
+    const walletStatus = document.getElementById('walletStatus');
+    const walletAddress = document.getElementById('walletAddress');
+    const walletNetwork = document.getElementById('walletNetwork');
+
+    if (walletAddress) {
+        walletAddress.textContent = `Address: ${formatAddress(address)}`;
+    }
+
+    if (walletNetwork && currentChainId) {
+        walletNetwork.textContent = `Network: ${getNetworkName(currentChainId)}`;
+    }
+
+    if (walletStatus) {
+        walletStatus.style.display = 'flex';
+    }
+}
+
+// Update button states
+function updateButtonState(state) {
+    const connectWalletBtn = document.getElementById('connectWalletBtn');
+    const connectWalletNav = document.getElementById('connectWalletNav');
+
+    if (state === 'connecting') {
+        if (connectWalletBtn) {
+            connectWalletBtn.disabled = true;
+            connectWalletBtn.querySelector('.wallet-text').textContent = 'Connecting...';
+        }
+        if (connectWalletNav) {
+            connectWalletNav.disabled = true;
+            connectWalletNav.querySelector('.wallet-text').textContent = 'Connecting...';
+        }
+    } else if (state === 'connected') {
+        if (connectWalletBtn) {
+            connectWalletBtn.style.display = 'none';
+        }
+        if (connectWalletNav) {
+            connectWalletNav.classList.add('connected');
+            connectWalletNav.querySelector('.wallet-text').textContent = formatAddress(currentAccount);
+        }
+    } else {
+        if (connectWalletBtn) {
+            connectWalletBtn.disabled = false;
+            connectWalletBtn.style.display = 'inline-flex';
+            connectWalletBtn.querySelector('.wallet-text').textContent = 'Connect MetaMask';
+        }
+        if (connectWalletNav) {
+            connectWalletNav.disabled = false;
+            connectWalletNav.classList.remove('connected');
+            connectWalletNav.querySelector('.wallet-text').textContent = 'Connect Wallet';
+        }
+    }
+}
+
+// Helper functions
+function formatAddress(address) {
+    if (!address) return '';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+}
+
+function getNetworkName(chainId) {
+    const networks = {
+        '0x38': 'BSC Mainnet ✓',
+        '0x61': 'BSC Testnet',
+        '0x1': 'Ethereum Mainnet',
+        '0x89': 'Polygon Mainnet',
+        '0xaa36a7': 'Sepolia Testnet',
+        '0x5': 'Goerli Testnet',
+    };
+    return networks[chainId] || `Chain ID: ${chainId}`;
+}
+
+function updateNetworkDisplay(chainId) {
+    const walletNetwork = document.getElementById('walletNetwork');
+    if (walletNetwork) {
+        walletNetwork.textContent = `Network: ${getNetworkName(chainId)}`;
+    }
+}
+
+function hideWalletStatus() {
+    const walletStatus = document.getElementById('walletStatus');
+    if (walletStatus) {
+        walletStatus.style.display = 'none';
+    }
+}
+
+function showTokenAdded() {
+    const tokenAdded = document.getElementById('tokenAdded');
+    if (tokenAdded) {
+        tokenAdded.style.display = 'block';
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            tokenAdded.style.display = 'none';
+        }, 10000);
+    }
+}
+
+function hideTokenAdded() {
+    const tokenAdded = document.getElementById('tokenAdded');
+    if (tokenAdded) {
+        tokenAdded.style.display = 'none';
+    }
+}
+
+function showError(message) {
+    const walletError = document.getElementById('walletError');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    if (walletError && errorMessage) {
+        errorMessage.textContent = message;
+        walletError.style.display = 'block';
+    }
+}
+
+function hideError() {
+    const walletError = document.getElementById('walletError');
+    if (walletError) {
+        walletError.style.display = 'none';
+    }
+}
+
+// ===========================
+// MOBILE MENU
+// ===========================
+
 const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
 const navLinks = document.querySelector('.nav-links');
 
@@ -17,7 +345,10 @@ if (mobileMenuToggle) {
     });
 }
 
-// Waitlist Form Handling
+// ===========================
+// WAITLIST FORM
+// ===========================
+
 const waitlistForm = document.getElementById('waitlistForm');
 const successMessage = document.getElementById('successMessage');
 const emailInput = document.getElementById('emailInput');
@@ -57,9 +388,15 @@ window.addEventListener('DOMContentLoaded', () => {
         waitlistForm.style.display = 'none';
         successMessage.classList.add('show');
     }
+
+    // Initialize MetaMask
+    initMetaMask();
 });
 
-// Animated Counter for Hero Stats
+// ===========================
+// ANIMATED COUNTERS
+// ===========================
+
 function animateCounter(element, target, duration = 2000) {
     const start = 0;
     const increment = target / (duration / 16);
@@ -104,7 +441,10 @@ if (heroStats) {
     statsObserver.observe(heroStats);
 }
 
-// Smooth Scroll with Offset for Fixed Navbar
+// ===========================
+// SMOOTH SCROLLING
+// ===========================
+
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         e.preventDefault();
@@ -121,7 +461,10 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// Navbar Background on Scroll
+// ===========================
+// NAVBAR EFFECTS
+// ===========================
+
 const navbar = document.querySelector('.navbar');
 let lastScroll = 0;
 
@@ -139,7 +482,10 @@ window.addEventListener('scroll', () => {
     lastScroll = currentScroll;
 });
 
-// Intersection Observer for Fade-in Animations
+// ===========================
+// FADE-IN ANIMATIONS
+// ===========================
+
 const observerOptions = {
     threshold: 0.1,
     rootMargin: '0px 0px -50px 0px'
@@ -167,7 +513,10 @@ document.querySelectorAll('.impact-card').forEach((card, index) => {
     card.style.transitionDelay = `${index * 0.1}s`;
 });
 
-// Add parallax effect to hero background
+// ===========================
+// PARALLAX EFFECT
+// ===========================
+
 window.addEventListener('scroll', () => {
     const scrolled = window.pageYOffset;
     const heroBackground = document.querySelector('.hero-background');
@@ -176,7 +525,10 @@ window.addEventListener('scroll', () => {
     }
 });
 
-// Email validation helper
+// ===========================
+// EMAIL VALIDATION
+// ===========================
+
 function isValidEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
@@ -193,7 +545,12 @@ if (emailInput) {
     });
 }
 
-// Console message for developers
+// ===========================
+// CONSOLE MESSAGES
+// ===========================
+
 console.log('%c🌍 GZ Coin - Coming Soon!', 'color: #00d9ff; font-size: 20px; font-weight: bold;');
 console.log('%cEvery line of code makes a difference. Join us in creating meaningful impact.', 'color: #00ff88; font-size: 14px;');
 console.log('%c🚀 Be the first to know when we launch - join our waitlist!', 'color: #00d9ff; font-size: 14px;');
+console.log('%c🦊 Connect your MetaMask wallet to add GZ Coin (BEP20) token on BSC!', 'color: #ff922b; font-size: 14px;');
+console.log('%c⚡ Network: BSC Mainnet | Contract: 0xcac2f4191B50a3781BA939BDd6cBc88C96F540BC', 'color: #f0b90b; font-size: 12px;');
