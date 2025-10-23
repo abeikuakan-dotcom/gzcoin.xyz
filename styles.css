@@ -128,18 +128,24 @@ body {
     transition: all var(--transition-speed);
 }
 
-/* Wallet Button - Navigation */
+/* Wallet Buttons - Navigation */
+.wallet-buttons-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .btn-wallet-nav {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
+    gap: 6px;
+    padding: 10px 16px;
     background: linear-gradient(135deg, #f76707, #ff922b);
     border: none;
     border-radius: 8px;
     color: white;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all var(--transition-speed);
     font-family: inherit;
@@ -148,6 +154,14 @@ body {
 .btn-wallet-nav:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 20px rgba(247, 103, 7, 0.4);
+}
+
+.btn-wallet-nav.btn-trust {
+    background: linear-gradient(135deg, #3375BB, #5B9FDB);
+}
+
+.btn-wallet-nav.btn-trust:hover {
+    box-shadow: 0 5px 20px rgba(51, 117, 187, 0.4);
 }
 
 .btn-wallet-nav.connected {
@@ -642,11 +656,20 @@ section {
     line-height: 1.7;
 }
 
+/* Wallet Buttons Group */
+.wallet-buttons-group {
+    display: flex;
+    gap: calc(var(--spacing-unit) * 2);
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: calc(var(--spacing-unit) * 3);
+}
+
 .btn-wallet {
     display: inline-flex;
     align-items: center;
     gap: 12px;
-    padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 6);
+    padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 5);
     background: linear-gradient(135deg, #f76707, #ff922b);
     border: none;
     border-radius: 12px;
@@ -656,12 +679,19 @@ section {
     cursor: pointer;
     transition: all var(--transition-speed);
     font-family: inherit;
-    margin-bottom: calc(var(--spacing-unit) * 3);
 }
 
 .btn-wallet:hover {
     transform: translateY(-3px);
     box-shadow: 0 15px 40px rgba(247, 103, 7, 0.5);
+}
+
+.btn-wallet.btn-trust {
+    background: linear-gradient(135deg, #3375BB, #5B9FDB);
+}
+
+.btn-wallet.btn-trust:hover {
+    box-shadow: 0 15px 40px rgba(51, 117, 187, 0.5);
 }
 
 .btn-wallet:disabled {
@@ -950,12 +980,18 @@ section {
         width: 100%;
     }
 
-    .btn-wallet-nav {
+    .wallet-buttons-nav {
         display: none;
+    }
+
+    .wallet-buttons-group {
+        flex-direction: column;
+        align-items: center;
     }
 
     .btn-wallet {
         width: 100%;
+        max-width: 350px;
     }
 
     .wallet-status {
