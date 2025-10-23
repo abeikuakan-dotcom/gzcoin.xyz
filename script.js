@@ -7,7 +7,7 @@ const GZCOIN_TOKEN = {
     address: '0xcac2f4191B50a3781BA939BDd6cBc88C96F540BC',
     symbol: 'GZ',
     decimals: 18,
-    image: 'https://raw.githubusercontent.com/abeikuakan-dotcom/gzcoin.xyz/refs/heads/main/logo.jpg' // GZ Coin logo (must be absolute URL for Trust Wallet)
+    image: 'https://i.imgur.com/pjCy64O.png'
 };
 
 // BSC Mainnet Configuration
@@ -206,16 +206,25 @@ async function switchToBSC() {
 // Add GZ Coin token to Wallet
 async function addTokenToWallet(walletName = 'wallet') {
     try {
+        // Prepare token options
+        const tokenOptions = {
+            address: GZCOIN_TOKEN.address,
+            symbol: GZCOIN_TOKEN.symbol,
+            decimals: GZCOIN_TOKEN.decimals,
+        };
+
+        // Only add image if it exists and is valid
+        if (GZCOIN_TOKEN.image && GZCOIN_TOKEN.image.trim() !== '') {
+            tokenOptions.image = GZCOIN_TOKEN.image;
+        }
+
+        console.log('🔄 Adding token with options:', tokenOptions);
+
         const wasAdded = await window.ethereum.request({
             method: 'wallet_watchAsset',
             params: {
                 type: 'ERC20',
-                options: {
-                    address: GZCOIN_TOKEN.address,
-                    symbol: GZCOIN_TOKEN.symbol,
-                    decimals: GZCOIN_TOKEN.decimals,
-                    image: GZCOIN_TOKEN.image,
-                },
+                options: tokenOptions,
             },
         });
 
@@ -227,6 +236,11 @@ async function addTokenToWallet(walletName = 'wallet') {
         }
     } catch (error) {
         console.error('Error adding token:', error);
+        console.error('Error details:', {
+            code: error.code,
+            message: error.message,
+            data: error.data
+        });
         // Don't show error for token addition failure - it's optional
     }
 }
@@ -642,4 +656,3 @@ console.log('%cEvery line of code makes a difference. Join us in creating meanin
 console.log('%c🚀 Be the first to know when we launch - join our waitlist!', 'color: #00d9ff; font-size: 14px;');
 console.log('%c🦊 Connect MetaMask or 🛡️ Trust Wallet to add GZ Coin (BEP20) token on BSC!', 'color: #ff922b; font-size: 14px;');
 console.log('%c⚡ Network: BSC Mainnet | Contract: 0xcac2f4191B50a3781BA939BDd6cBc88C96F540BC', 'color: #f0b90b; font-size: 12px;');
-
