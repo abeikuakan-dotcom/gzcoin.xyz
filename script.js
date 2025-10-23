@@ -7,7 +7,7 @@ const GZCOIN_TOKEN = {
     address: '0xcac2f4191B50a3781BA939BDd6cBc88C96F540BC',
     symbol: 'GZ',
     decimals: 18,
-    image: window.location.origin + '/logo.jpg' // GZ Coin logo
+    image: 'https://raw.githubusercontent.com/abeikuakan-dotcom/gzcoin.xyz/refs/heads/main/logo.jpg' // GZ Coin logo (must be absolute URL for Trust Wallet)
 };
 
 // BSC Mainnet Configuration
@@ -642,3 +642,4 @@ console.log('%cEvery line of code makes a difference. Join us in creating meanin
 console.log('%c🚀 Be the first to know when we launch - join our waitlist!', 'color: #00d9ff; font-size: 14px;');
 console.log('%c🦊 Connect MetaMask or 🛡️ Trust Wallet to add GZ Coin (BEP20) token on BSC!', 'color: #ff922b; font-size: 14px;');
 console.log('%c⚡ Network: BSC Mainnet | Contract: 0xcac2f4191B50a3781BA939BDd6cBc88C96F540BC', 'color: #f0b90b; font-size: 12px;');
+
