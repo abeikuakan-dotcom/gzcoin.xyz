@@ -85,6 +85,8 @@ async function connectWallet(walletType = 'metamask') {
     currentWalletType = walletType;
     const walletName = walletType === 'trust' ? 'Trust Wallet' : 'MetaMask';
     
+    console.log(`🔌 Connecting to ${walletName}...`);
+    
     // Check if wallet extension is installed
     if (typeof window.ethereum === 'undefined') {
         // For Trust Wallet, try mobile deep link
@@ -103,13 +105,60 @@ async function connectWallet(walletType = 'metamask') {
         return;
     }
 
-    // For Trust Wallet, check if it's the active provider
-    if (walletType === 'trust' && !window.ethereum.isTrust) {
-        // Try to switch to Trust Wallet if multiple wallets installed
-        if (window.trustwallet) {
-            window.ethereum = window.trustwallet;
-        } else if (isMobile()) {
-            tryTrustWalletMobile();
+    // Select the correct provider when multiple wallets are installed
+    let provider = window.ethereum;
+    
+    if (walletType === 'metamask') {
+        // For MetaMask, prefer the MetaMask provider
+        if (window.ethereum.providers) {
+            // Multiple wallets detected - find MetaMask
+            provider = window.ethereum.providers.find(p => p.isMetaMask && !p.isTrust);
+            if (!provider) {
+                provider = window.ethereum.providers.find(p => p.isMetaMask);
+            }
+            if (!provider) {
+                showError('MetaMask not found. Please install MetaMask extension.');
+                return;
+            }
+            console.log('✅ Using MetaMask from multiple providers');
+        } else if (window.ethereum.isMetaMask && !window.ethereum.isTrust) {
+            // Single MetaMask installation
+            provider = window.ethereum;
+            console.log('✅ Using MetaMask (single provider)');
+        } else if (window.ethereum.isTrust) {
+            showError('Trust Wallet detected. Please use the Trust Wallet button instead or disable Trust Wallet extension.');
+            return;
+        }
+    } else if (walletType === 'trust') {
+        // For Trust Wallet, prefer the Trust Wallet provider
+        if (window.ethereum.providers) {
+            // Multiple wallets detected - find Trust Wallet
+            provider = window.ethereum.providers.find(p => p.isTrust);
+            if (!provider && window.trustwallet) {
+                provider = window.trustwallet;
+            }
+            if (!provider) {
+                if (isMobile()) {
+                    tryTrustWalletMobile();
+                    return;
+                }
+                showError('Trust Wallet not found. Please install Trust Wallet extension.');
+                return;
+            }
+            console.log('✅ Using Trust Wallet from multiple providers');
+        } else if (window.ethereum.isTrust) {
+            // Single Trust Wallet installation
+            provider = window.ethereum;
+            console.log('✅ Using Trust Wallet (single provider)');
+        } else if (window.trustwallet) {
+            provider = window.trustwallet;
+            console.log('✅ Using Trust Wallet (fallback)');
+        } else {
+            if (isMobile()) {
+                tryTrustWalletMobile();
+                return;
+            }
+            showError('Trust Wallet not found. Please install Trust Wallet extension.');
             return;
         }
     }
@@ -118,16 +167,19 @@ async function connectWallet(walletType = 'metamask') {
         hideError();
         updateButtonState('connecting', walletType);
 
-        // Request account access
-        const accounts = await window.ethereum.request({ 
+        // Request account access from the selected provider
+        const accounts = await provider.request({ 
             method: 'eth_requestAccounts' 
         });
 
         handleAccountsChanged(accounts);
 
-        // Get chain ID
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        // Get chain ID from the selected provider
+        const chainId = await provider.request({ method: 'eth_chainId' });
         currentChainId = chainId;
+        
+        // Store the provider for future use
+        window.selectedProvider = provider;
 
         // Check if on BSC Mainnet, if not, prompt to switch
         if (chainId !== BSC_MAINNET.chainId) {
@@ -172,19 +224,21 @@ function isMobile() {
 
 // Switch to BSC Mainnet
 async function switchToBSC() {
+    const provider = window.selectedProvider || window.ethereum;
+    
     try {
         // Try to switch to BSC Mainnet
-        await window.ethereum.request({
+        await provider.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: BSC_MAINNET.chainId }],
         });
         return true;
     } catch (switchError) {
-        // This error code indicates that the chain has not been added to MetaMask
+        // This error code indicates that the chain has not been added to the wallet
         if (switchError.code === 4902) {
             try {
-                // Add BSC Mainnet to MetaMask
-                await window.ethereum.request({
+                // Add BSC Mainnet to the wallet
+                await provider.request({
                     method: 'wallet_addEthereumChain',
                     params: [BSC_MAINNET],
                 });
@@ -205,6 +259,8 @@ async function switchToBSC() {
 
 // Add GZ Coin token to Wallet
 async function addTokenToWallet(walletName = 'wallet') {
+    const provider = window.selectedProvider || window.ethereum;
+    
     try {
         // Prepare token options
         const tokenOptions = {
@@ -218,9 +274,9 @@ async function addTokenToWallet(walletName = 'wallet') {
             tokenOptions.image = GZCOIN_TOKEN.image;
         }
 
-        console.log('🔄 Adding token with options:', tokenOptions);
+        console.log('🔄 Adding token to', walletName, 'with options:', tokenOptions);
 
-        const wasAdded = await window.ethereum.request({
+        const wasAdded = await provider.request({
             method: 'wallet_watchAsset',
             params: {
                 type: 'ERC20',
