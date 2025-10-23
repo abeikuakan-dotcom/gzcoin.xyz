@@ -26,19 +26,32 @@ const BSC_MAINNET = {
 // Wallet state
 let currentAccount = null;
 let currentChainId = null;
+let currentWalletType = null; // 'metamask' or 'trust'
 
-// Initialize MetaMask Integration
+// Initialize Wallet Integration
 function initMetaMask() {
     const connectWalletBtn = document.getElementById('connectWalletBtn');
     const connectWalletNav = document.getElementById('connectWalletNav');
+    const connectTrustBtn = document.getElementById('connectTrustBtn');
+    const connectTrustNav = document.getElementById('connectTrustNav');
     const disconnectBtn = document.getElementById('disconnectBtn');
 
+    // MetaMask buttons
     if (connectWalletBtn) {
-        connectWalletBtn.addEventListener('click', connectWallet);
+        connectWalletBtn.addEventListener('click', () => connectWallet('metamask'));
     }
 
     if (connectWalletNav) {
-        connectWalletNav.addEventListener('click', connectWallet);
+        connectWalletNav.addEventListener('click', () => connectWallet('metamask'));
+    }
+
+    // Trust Wallet buttons
+    if (connectTrustBtn) {
+        connectTrustBtn.addEventListener('click', () => connectWallet('trust'));
+    }
+
+    if (connectTrustNav) {
+        connectTrustNav.addEventListener('click', () => connectWallet('trust'));
     }
 
     if (disconnectBtn) {
@@ -50,6 +63,12 @@ function initMetaMask() {
         window.ethereum.request({ method: 'eth_accounts' })
             .then(accounts => {
                 if (accounts.length > 0) {
+                    // Detect wallet type
+                    if (window.ethereum.isTrust) {
+                        currentWalletType = 'trust';
+                    } else {
+                        currentWalletType = 'metamask';
+                    }
                     handleAccountsChanged(accounts);
                 }
             })
@@ -61,21 +80,43 @@ function initMetaMask() {
     }
 }
 
-// Connect to MetaMask
-async function connectWallet() {
-    // Check if MetaMask is installed
+// Connect to Wallet (MetaMask or Trust Wallet)
+async function connectWallet(walletType = 'metamask') {
+    currentWalletType = walletType;
+    const walletName = walletType === 'trust' ? 'Trust Wallet' : 'MetaMask';
+    
+    // Check if wallet extension is installed
     if (typeof window.ethereum === 'undefined') {
-        showError('MetaMask is not installed! Please install MetaMask browser extension to continue.');
-        // Open MetaMask download page
+        // For Trust Wallet, try mobile deep link
+        if (walletType === 'trust') {
+            tryTrustWalletMobile();
+            return;
+        }
+        
+        showError(`${walletName} is not installed! Please install ${walletName} browser extension to continue.`);
         setTimeout(() => {
-            window.open('https://metamask.io/download/', '_blank');
+            const downloadUrl = walletType === 'trust' 
+                ? 'https://trustwallet.com/download' 
+                : 'https://metamask.io/download/';
+            window.open(downloadUrl, '_blank');
         }, 2000);
         return;
     }
 
+    // For Trust Wallet, check if it's the active provider
+    if (walletType === 'trust' && !window.ethereum.isTrust) {
+        // Try to switch to Trust Wallet if multiple wallets installed
+        if (window.trustwallet) {
+            window.ethereum = window.trustwallet;
+        } else if (isMobile()) {
+            tryTrustWalletMobile();
+            return;
+        }
+    }
+
     try {
         hideError();
-        updateButtonState('connecting');
+        updateButtonState('connecting', walletType);
 
         // Request account access
         const accounts = await window.ethereum.request({ 
@@ -93,24 +134,40 @@ async function connectWallet() {
             const switched = await switchToBSC();
             if (!switched) {
                 showError('Please switch to BSC Mainnet to add GZ Coin token.');
-                updateButtonState('connected'); // Keep connected but show error
+                updateButtonState('connected', walletType);
                 return;
             }
         }
 
-        // Add token to MetaMask
-        await addTokenToMetaMask();
+        // Add token to wallet
+        await addTokenToWallet(walletName);
 
     } catch (error) {
-        console.error('Error connecting to MetaMask:', error);
-        updateButtonState('disconnected');
+        console.error(`Error connecting to ${walletName}:`, error);
+        updateButtonState('disconnected', walletType);
         
         if (error.code === 4001) {
-            showError('Connection rejected. Please approve the connection request in MetaMask.');
+            showError(`Connection rejected. Please approve the connection request in ${walletName}.`);
         } else {
-            showError('Failed to connect to MetaMask. Please try again.');
+            showError(`Failed to connect to ${walletName}. Please try again.`);
         }
     }
+}
+
+// Try Trust Wallet mobile deep link
+function tryTrustWalletMobile() {
+    const dappUrl = window.location.href;
+    const trustDeepLink = `https://link.trustwallet.com/open_url?coin_id=20000714&url=${encodeURIComponent(dappUrl)}`;
+    
+    showError('Redirecting to Trust Wallet mobile app...');
+    setTimeout(() => {
+        window.location.href = trustDeepLink;
+    }, 1000);
+}
+
+// Check if mobile device
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
 // Switch to BSC Mainnet
@@ -146,8 +203,8 @@ async function switchToBSC() {
     }
 }
 
-// Add GZ Coin token to MetaMask
-async function addTokenToMetaMask() {
+// Add GZ Coin token to Wallet
+async function addTokenToWallet(walletName = 'wallet') {
     try {
         const wasAdded = await window.ethereum.request({
             method: 'wallet_watchAsset',
@@ -163,10 +220,10 @@ async function addTokenToMetaMask() {
         });
 
         if (wasAdded) {
-            console.log('GZ Coin token added to MetaMask!');
+            console.log(`GZ Coin token added to ${walletName}!`);
             showTokenAdded();
         } else {
-            console.log('GZ Coin token not added');
+            console.log(`GZ Coin token not added to ${walletName}`);
         }
     } catch (error) {
         console.error('Error adding token:', error);
@@ -221,37 +278,68 @@ function updateWalletUI(address) {
 }
 
 // Update button states
-function updateButtonState(state) {
+function updateButtonState(state, walletType = null) {
     const connectWalletBtn = document.getElementById('connectWalletBtn');
     const connectWalletNav = document.getElementById('connectWalletNav');
+    const connectTrustBtn = document.getElementById('connectTrustBtn');
+    const connectTrustNav = document.getElementById('connectTrustNav');
+
+    // Determine which wallet we're working with
+    const activeWalletType = walletType || currentWalletType || 'metamask';
+    const isMetaMask = activeWalletType === 'metamask';
+    const isTrust = activeWalletType === 'trust';
 
     if (state === 'connecting') {
-        if (connectWalletBtn) {
+        if (isMetaMask && connectWalletBtn) {
             connectWalletBtn.disabled = true;
             connectWalletBtn.querySelector('.wallet-text').textContent = 'Connecting...';
         }
-        if (connectWalletNav) {
+        if (isMetaMask && connectWalletNav) {
             connectWalletNav.disabled = true;
             connectWalletNav.querySelector('.wallet-text').textContent = 'Connecting...';
         }
-    } else if (state === 'connected') {
-        if (connectWalletBtn) {
-            connectWalletBtn.style.display = 'none';
+        if (isTrust && connectTrustBtn) {
+            connectTrustBtn.disabled = true;
+            connectTrustBtn.querySelector('.wallet-text').textContent = 'Connecting...';
         }
-        if (connectWalletNav) {
+        if (isTrust && connectTrustNav) {
+            connectTrustNav.disabled = true;
+            connectTrustNav.querySelector('.wallet-text').textContent = 'Connecting...';
+        }
+    } else if (state === 'connected') {
+        // Hide both main buttons, show connected in nav
+        if (connectWalletBtn) connectWalletBtn.style.display = 'none';
+        if (connectTrustBtn) connectTrustBtn.style.display = 'none';
+        
+        if (isMetaMask && connectWalletNav) {
             connectWalletNav.classList.add('connected');
             connectWalletNav.querySelector('.wallet-text').textContent = formatAddress(currentAccount);
         }
+        if (isTrust && connectTrustNav) {
+            connectTrustNav.classList.add('connected');
+            connectTrustNav.querySelector('.wallet-text').textContent = formatAddress(currentAccount);
+        }
     } else {
+        // Disconnected state - reset all buttons
         if (connectWalletBtn) {
             connectWalletBtn.disabled = false;
             connectWalletBtn.style.display = 'inline-flex';
             connectWalletBtn.querySelector('.wallet-text').textContent = 'Connect MetaMask';
         }
+        if (connectTrustBtn) {
+            connectTrustBtn.disabled = false;
+            connectTrustBtn.style.display = 'inline-flex';
+            connectTrustBtn.querySelector('.wallet-text').textContent = 'Connect Trust Wallet';
+        }
         if (connectWalletNav) {
             connectWalletNav.disabled = false;
             connectWalletNav.classList.remove('connected');
-            connectWalletNav.querySelector('.wallet-text').textContent = 'Connect Wallet';
+            connectWalletNav.querySelector('.wallet-text').textContent = 'MetaMask';
+        }
+        if (connectTrustNav) {
+            connectTrustNav.disabled = false;
+            connectTrustNav.classList.remove('connected');
+            connectTrustNav.querySelector('.wallet-text').textContent = 'Trust';
         }
     }
 }
@@ -552,5 +640,5 @@ if (emailInput) {
 console.log('%c🌍 GZ Coin - Coming Soon!', 'color: #00d9ff; font-size: 20px; font-weight: bold;');
 console.log('%cEvery line of code makes a difference. Join us in creating meaningful impact.', 'color: #00ff88; font-size: 14px;');
 console.log('%c🚀 Be the first to know when we launch - join our waitlist!', 'color: #00d9ff; font-size: 14px;');
-console.log('%c🦊 Connect your MetaMask wallet to add GZ Coin (BEP20) token on BSC!', 'color: #ff922b; font-size: 14px;');
+console.log('%c🦊 Connect MetaMask or 🛡️ Trust Wallet to add GZ Coin (BEP20) token on BSC!', 'color: #ff922b; font-size: 14px;');
 console.log('%c⚡ Network: BSC Mainnet | Contract: 0xcac2f4191B50a3781BA939BDd6cBc88C96F540BC', 'color: #f0b90b; font-size: 12px;');
