@@ -30,10 +30,16 @@
                     <li><a href="#transparency">Transparency</a></li>
                     <li><a href="#get-notified">Get Notified</a></li>
                 </ul>
-                <button id="connectWalletNav" class="btn-wallet-nav">
-                    <span class="wallet-icon">🦊</span>
-                    <span class="wallet-text">Connect Wallet</span>
-                </button>
+                <div class="wallet-buttons-nav">
+                    <button id="connectWalletNav" class="btn-wallet-nav">
+                        <span class="wallet-icon">🦊</span>
+                        <span class="wallet-text">MetaMask</span>
+                    </button>
+                    <button id="connectTrustNav" class="btn-wallet-nav btn-trust">
+                        <span class="wallet-icon">🛡️</span>
+                        <span class="wallet-text">Trust</span>
+                    </button>
+                </div>
                 <button class="mobile-menu-toggle" aria-label="Toggle menu">
                     <span></span>
                     <span></span>
@@ -265,12 +271,18 @@
                     </div>
                     <h3 class="metamask-title">Early Investors: Connect Your Wallet</h3>
                     <p class="metamask-description">
-                        Connect your MetaMask wallet to automatically add GZ Coin (BEP20) token on BSC Mainnet and be ready for launch day.
+                        Connect your crypto wallet to automatically add GZ Coin (BEP20) token on BSC Mainnet and be ready for launch day.
                     </p>
-                    <button id="connectWalletBtn" class="btn btn-wallet">
-                        <span class="wallet-icon">🦊</span>
-                        <span class="wallet-text">Connect MetaMask</span>
-                    </button>
+                    <div class="wallet-buttons-group">
+                        <button id="connectWalletBtn" class="btn btn-wallet">
+                            <span class="wallet-icon">🦊</span>
+                            <span class="wallet-text">Connect MetaMask</span>
+                        </button>
+                        <button id="connectTrustBtn" class="btn btn-wallet btn-trust">
+                            <span class="wallet-icon">🛡️</span>
+                            <span class="wallet-text">Connect Trust Wallet</span>
+                        </button>
+                    </div>
                     
                     <!-- Wallet Status -->
                     <div id="walletStatus" class="wallet-status" style="display: none;">
